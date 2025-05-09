@@ -1,101 +1,75 @@
 package com.example.myapplication
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.browser.customtabs.CustomTabsServiceConnection
+import androidx.core.content.ContextCompat
 
 class WebViewActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val url = intent.getStringExtra(EXTRA_URL) ?: "https://www.google.com"
-
-        setContent {
-            MyApplicationTheme {
-                WebViewScreenWithNavBar(url = url, onBackPressed = { finish() })
-            }
-        }
-    }
-
     companion object {
         private const val EXTRA_URL = "extra_url"
 
-        fun start(context: Context, url: String) {
-            val intent = Intent(context, WebViewActivity::class.java).apply {
-                putExtra(EXTRA_URL, url)
-            }
-            context.startActivity(intent)
+        fun start(ctx: Context, url: String) {
+            val intent = Intent(ctx, WebViewActivity::class.java)
+                .putExtra(EXTRA_URL, url)
+            ctx.startActivity(intent)
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun WebViewScreenWithNavBar(url: String, onBackPressed: () -> Unit) {
-    var webTitle by remember { mutableStateOf("Carregando...") }
-    var webView: WebView? = null
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = webTitle) },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (webView?.canGoBack() == true) {
-                            webView?.goBack()
-                        } else {
-                            onBackPressed()
-                        }
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+        val url = intent.getStringExtra(EXTRA_URL).orEmpty()
+        if (url.isBlank()) {
+            finish()
+            return
+        }
+
+        // Cor da toolbar (definida em res/values/colors.xml)
+        val toolbarColor = ContextCompat.getColor(this, R.color.primaryColor)
+
+        // Configura o Custom Tab sem APIs deprecated
+        val colorParams = CustomTabColorSchemeParams.Builder()
+            .setToolbarColor(toolbarColor)
+            .build()
+
+        val builder = CustomTabsIntent.Builder()
+            .setDefaultColorSchemeParams(colorParams)
+            .setUrlBarHidingEnabled(true)
+            .setShareState(CustomTabsIntent.SHARE_STATE_ON)
+            .setShowTitle(true)
+
+        val customTabsIntent = builder.build()
+
+        // Vincula ao serviço de Custom Tabs (Chrome ou similar)
+        CustomTabsClient.getPackageName(this, null)?.let { pkg ->
+            customTabsIntent.intent.`package` = pkg
+            CustomTabsClient.bindCustomTabsService(
+                this,
+                pkg,
+                object : CustomTabsServiceConnection() {
+                    override fun onCustomTabsServiceConnected(
+                        name: ComponentName,
+                        client: CustomTabsClient
+                    ) {
+                        client.warmup(0L)
                     }
+                    override fun onServiceDisconnected(name: ComponentName) {}
                 }
             )
         }
-    ) { paddingValues ->
-        AndroidView(
-            factory = { context ->
-                WebView(context).apply {
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView, loadedUrl: String) {
-                            webTitle = "Meus Produtos"
-                        }
-                    }
-                    settings.apply {
-                        javaScriptEnabled = true
-                        domStorageEnabled = true
-                        loadsImagesAutomatically = true
-                        setSupportZoom(true)
-                    }
-                    loadUrl(url)
-                    webView = this
-                }
-            },
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        )
+
+        // Abre a Custom Tab
+        customTabsIntent.launchUrl(this, Uri.parse(url))
+
+        // Fecha esta Activity para que, ao fechar a aba, volte diretamente à MainActivity
+        finish()
     }
 }

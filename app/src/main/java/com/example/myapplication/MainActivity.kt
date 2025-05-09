@@ -27,34 +27,31 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        onOpenWebView = {
-                            WebViewActivity.start(this, "https://meusprodutos.globo.com/login")
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Minha Conta Web View",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 32.dp)
+                        )
+                        Button(onClick = {
+                            WebViewActivity.start(
+                                this@MainActivity,
+                                "https://meusprodutos.globo.com/login"
+                            )
+                        }) {
+                            Text(text = "Abrir Web View")
                         }
-                    )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun MainScreen(modifier: Modifier = Modifier, onOpenWebView: () -> Unit) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Minha Conta Web View",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        Button(onClick = onOpenWebView) {
-            Text(text = "Abrir Meus Produtos")
         }
     }
 }
@@ -63,6 +60,6 @@ fun MainScreen(modifier: Modifier = Modifier, onOpenWebView: () -> Unit) {
 @Composable
 fun MainScreenPreview() {
     MyApplicationTheme {
-        MainScreen(onOpenWebView = {})
+        // apenas visualização
     }
 }
